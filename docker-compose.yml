@@ -1,0 +1,54 @@
+name: immichml
+
+services:
+  immichml-server:
+    container_name: ${service_name}_server
+    # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
+    # Example tag: ${IMMICH_VERSION:-release}-cuda
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    # extends:
+    #   file: hwaccel.ml.yml
+    #   service: # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
+    volumes:
+      - model-cache:/cache
+    env_file:
+      - .env
+    restart: always
+    # ports:
+    #   - 3003:3003
+    depends_on:
+      - tailscale
+
+
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: ${service_name}_tailscale
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}?ephemeral=false
+      - TS_EXTRA_ARGS=--advertise-tags=tag:container
+      - TS_SERVE_CONFIG=/config/tailscale.json
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=${service_name}
+    volumes:
+      - ${PWD}/${service_name}_tailscale/state:/var/lib/tailscale
+      - ./tailscale.json:/config/tailscale.json
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: tailscale status --peers=false --json | grep -q 'Online.*true'
+    deploy:
+      resources:
+        limits:
+          pids: 100
+
+volumes:
+  model-cache:
+
+
