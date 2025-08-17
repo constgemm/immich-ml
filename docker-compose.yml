@@ -3,22 +3,22 @@ name: immichml
 services:
   immichml-server:
     container_name: ${service_name}_server
-    # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
-    # Example tag: ${IMMICH_VERSION:-release}-cuda
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
-    # extends:
-    #   file: hwaccel.ml.yml
-    #   service: # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}-cuda
     volumes:
       - model-cache:/cache
     env_file:
       - .env
     restart: always
-    # ports:
-    #   - 3003:3003
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
     depends_on:
       - tailscale
-
 
   tailscale:
     image: tailscale/tailscale:stable
